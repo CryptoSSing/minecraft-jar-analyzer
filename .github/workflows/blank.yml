@@ -4,32 +4,28 @@ on:
   workflow_dispatch:
 
 jobs:
-  build-windows:
+  build:
     runs-on: windows-latest
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v7
+      - uses: actions/checkout@v7
 
-      - name: Set up Python
-        uses: actions/setup-python@v7
+      - uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements-dev.txt
           pip install -r requirements.txt
+          pip install -r requirements-dev.txt
 
       - name: Run tests
-        run: |
-          python -m pytest
+        run: python -m pytest
 
-      - name: Build Windows EXE
+      - name: Build EXE
         shell: cmd
-        run: |
-          call build_windows.bat
+        run: call build_windows.bat
 
       - name: Upload EXE
         uses: actions/upload-artifact@v4
