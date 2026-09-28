@@ -140,7 +140,9 @@ commands:
 @pytest.mark.parametrize("parser,text", [
     (parse_fabric, "{not json"),
     (parse_fabric, "[1, 2, 3]"),
-    (parse_fabric, "[" * 100_000 + "]" * 100_000),  # deeply nested
+    # deeply nested; explicit id keeps the 200k-char string out of the node ID
+    # (Windows caps env vars like PYTEST_CURRENT_TEST at 32767 chars)
+    pytest.param(parse_fabric, "[" * 100_000 + "]" * 100_000, id="fabric-deeply-nested"),
     (parse_quilt, "{}"),
     (parse_mods_toml, "this is = = not toml"),
     (parse_mods_toml, 'modLoader="javafml"'),
