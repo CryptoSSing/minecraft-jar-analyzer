@@ -1,0 +1,4 @@
+# Runtime dependencies (what the app itself needs).
+# PySide6-Essentials is the official Qt for Python package without the large
+# optional add-ons (WebEngine, 3D, ...). Same API, much smaller .exe.
+PySide6-Essentials==6.11.2

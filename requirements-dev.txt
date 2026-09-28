@@ -1,0 +1,5 @@
+# Development / build dependencies. Install with:
+#   pip install -r requirements-dev.txt
+-r requirements.txt
+pytest==9.1.1
+pyinstaller==6.22.3
