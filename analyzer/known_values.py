@@ -90,12 +90,10 @@ IP_LOOKUP_DOMAINS = {
 FREE_TLDS = {".tk", ".ml", ".ga", ".cf", ".gq"}
 
 # URL fragments that indicate a data-exfiltration channel.
-# Checked with a simple "fragment in url" test.
+# Checked with a simple "fragment in url" test. Discord webhooks are matched
+# by a pattern in indicators.py instead, because their path can contain an
+# API version (discord.com/api/v10/webhooks/...).
 EXFIL_URL_FRAGMENTS = {
-    "discord.com/api/webhooks": "Discord webhook",
-    "discordapp.com/api/webhooks": "Discord webhook",
-    "canary.discord.com/api/webhooks": "Discord webhook",
-    "ptb.discord.com/api/webhooks": "Discord webhook",
     "api.telegram.org/bot": "Telegram bot API",
 }
 
@@ -171,11 +169,71 @@ SENSITIVE_STRINGS = {
     "/bin/bash": CATEGORY_SHELL,
 }
 
-# Categories strong enough to be a WARNING by themselves.
+# Categories strong enough to be a WARNING by themselves: these name specific
+# credential stores or attack tooling that mods have no reason to touch.
 HIGH_RISK_CATEGORIES = {
     CATEGORY_DISCORD, CATEGORY_BROWSER, CATEGORY_WALLET, CATEGORY_LAUNCHER,
-    CATEGORY_PERSISTENCE, CATEGORY_DEFENDER, CATEGORY_MINER, CATEGORY_DPAPI,
+    CATEGORY_DEFENDER, CATEGORY_MINER, CATEGORY_DPAPI,
 }
+# Persistence strings (e.g. "schtasks", "LaunchAgents") are REVIEW alone and
+# only become a WARNING when the same class can also run programs.
+
+# --------------------------------------------------------------------------
+# Process execution context. When a class can start programs, the string
+# literals in that same class usually reveal WHAT it starts. Matched against
+# whole strings or the first word of a command string, case-insensitively.
+# --------------------------------------------------------------------------
+
+# Programs legitimate mods commonly run: open a URL/folder in the default app,
+# or query hardware/OS details for compatibility checks.
+HELPER_COMMANDS = {
+    "xdg-open": "opens a URL/file in the default app (Linux)",
+    "open": "opens a URL/file in the default app (macOS)",
+    "explorer": "opens a folder in Explorer (Windows)",
+    "explorer.exe": "opens a folder in Explorer (Windows)",
+    "lspci": "lists graphics/PCI hardware (Linux)",
+    "ldd": "checks the system C library (Linux)",
+    "uname": "reports the OS version",
+    "sw_vers": "reports the macOS version",
+    "sysctl": "reports system/hardware details",
+    "nvidia-smi": "reports NVIDIA GPU details",
+    "system_profiler": "reports hardware details (macOS)",
+    "wmic": "queries hardware details (Windows)",
+}
+
+# Shells and script interpreters: can run arbitrary commands, so the actual
+# behaviour depends on the script they are given.
+SHELL_COMMANDS = {
+    "cmd", "cmd.exe", "powershell", "powershell.exe", "pwsh", "pwsh.exe",
+    "sh", "bash", "zsh", "/bin/sh", "/bin/bash", "/bin/zsh", "/usr/bin/env",
+    "wscript", "wscript.exe", "cscript", "cscript.exe", "mshta", "mshta.exe", "osascript",
+}
+
+# Programs attackers commonly abuse to download or run payloads ("living off
+# the land"), plus launching another Java program.
+RISKY_COMMANDS = {
+    "rundll32", "rundll32.exe", "regsvr32", "regsvr32.exe", "certutil", "certutil.exe",
+    "bitsadmin", "bitsadmin.exe", "curl", "curl.exe", "wget", "schtasks", "schtasks.exe",
+    "java", "java.exe", "javaw", "javaw.exe", "chmod", "attrib",
+}
+
+# Command-line fragments that hide a window or bypass script safety settings.
+HIDDEN_EXECUTION_FLAGS = {
+    "-windowstyle hidden": "hides the PowerShell window",
+    "-w hidden": "hides the PowerShell window",
+    "-executionpolicy bypass": "bypasses the PowerShell script policy",
+    "-ep bypass": "bypasses the PowerShell script policy",
+    "-encodedcommand": "runs a Base64-encoded PowerShell command",
+    "-enc ": "runs a Base64-encoded PowerShell command",
+    "//b": "runs a Windows script in batch (no UI) mode",
+    "createobject(\"wscript.shell\")": "runs commands through Windows Script Host",
+    "nohup ": "keeps a process running after the parent exits",
+}
+
+# File extensions that mean "this is runnable code" when they appear in a
+# string (e.g. a download target name).
+EXECUTABLE_EXTENSIONS = (".jar", ".class", ".exe", ".dll", ".so", ".dylib", ".bat",
+                         ".cmd", ".ps1", ".vbs", ".sh", ".msi", ".scr")
 
 # Member names used to read the logged-in player's Minecraft session token
 # (Mojang names / Fabric intermediary / legacy Forge SRG names). Only counted

@@ -99,3 +99,17 @@ def test_export_writes_report(window, jars, tmp_path, monkeypatch):
     monkeypatch.setattr(QtWidgets.QFileDialog, "getSaveFileName", lambda *a, **k: (str(out), ""))
     window.export("txt")
     assert (tmp_path / "report.txt").read_text(encoding="utf-8").startswith("=")
+
+
+def test_findings_details_explain_rating(window, jars):
+    results = analyze_files(jars, HashDatabase())
+    window.add_paths(jars)
+    window.show_results(results)
+    window.result_list.setCurrentRow(0)
+    table = window.findings.table
+    window.findings.select(0)  # the webhook WARNING
+    details = window.findings.details.toPlainText()
+    for part in ("strong security concern", "Detected:", "Why it matters:", "Context found:", "Why this rating:"):
+        assert part in details, part
+    info_rows = [row for row in range(table.rowCount()) if table.item(row, 0).text().endswith("INFO")]
+    assert info_rows and all(table.item(row, 3).text() == "—" for row in info_rows)

@@ -25,7 +25,7 @@ from analyzer.pipeline import collect_jars, load_hash_database
 from analyzer.resources import asset_path, hash_database_path
 from analyzer.sanitize import safe_text
 from analyzer.version import APP_NAME, PUBLISHER, VERSION
-from reports.exporter import DISCLAIMER, write_report
+from reports.exporter import DISCLAIMER, SEVERITY_LEGEND, write_report
 
 from . import theme
 from .widgets import (FileListPanel, FindingsPanel, OverviewPanel,
@@ -141,7 +141,9 @@ class MainWindow(QMainWindow):
         export_row.addWidget(self.btn_json)
         export_row.addWidget(self.btn_txt)
         export_row.addStretch()
-        legend = plain_label("ℹ INFO = noteworthy    ◆ REVIEW = look at it    ⚠ WARNING = look closely", "Dim")
+        legend = plain_label(SEVERITY_LEGEND, "Dim")
+        legend.setToolTip("Confidence (Findings tab) says how strongly the evidence shows the behavior is "
+                          "security-significant. INFO findings are facts, so they show no confidence (—).")
         legend.setWordWrap(False)
         export_row.addWidget(legend)
         layout.addLayout(export_row)

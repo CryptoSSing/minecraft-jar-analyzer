@@ -34,16 +34,20 @@ It is a **static analyzer**: it reads the files as data and never runs them.
 
 Every finding has a **severity**, a **title**, a **location**, a plain-English
 **explanation** (including legitimate reasons it might appear) and a **confidence**.
+REVIEW and WARNING findings also say **what context was found** (what else the
+same class does) and **why they got that rating**.
 
 | Severity | Meaning |
 |---|---|
-| `INFO` | Worth knowing. Common in legitimate mods (for example, reflection). |
-| `REVIEW` | Unusual for a mod. A person should look at it. |
-| `WARNING` | Strongly associated with malicious mods. Look closely. |
+| `INFO` | Informational: a fact about the JAR (metadata, bundled libraries, ordinary APIs). Not a security warning. |
+| `REVIEW` | Inspect this behavior: a capability with security relevance that legitimate mods also use (running programs, loading native code, runtime class loading...). |
+| `WARNING` | Strong security concern: a strong indicator or a *combination* of indicators, such as downloading something and running it in the same class. |
 
-**Confidence** (`LOW` / `MEDIUM` / `HIGH`) says how sure the tool is that the
-indicator itself is accurate and relevant. For example, "a Discord webhook URL
-is present" is HIGH, while "these names look obfuscated" is MEDIUM.
+**Confidence** (`LOW` / `MEDIUM` / `HIGH`) says how strongly the evidence shows
+the behavior is *security-significant*, not whether the API is present (a static
+match is always certain). "Main-Class exists" is a sure fact with no security
+weight, so INFO findings show no confidence (`—`). "Runs `xdg-open`" is
+REVIEW/LOW; "downloads a `.jar` and starts a hidden PowerShell" is WARNING/HIGH.
 
 ## What it does NOT do
 
@@ -273,9 +277,10 @@ Please read these before relying on results.
   constant pool. A file with no findings can still be malicious.
 - **Indicators are not verdicts.** Many legitimate mods use reflection,
   networking, native libraries or even run programs (for example to open a
-  browser). In testing, some legitimate auto-updaters triggered the
-  "network + running programs" WARNING. Always read the explanation and the
-  location.
+  browser). Legitimate self-updaters that download a JAR and replace
+  themselves with a hidden script produce the same WARNINGs as a dropper,
+  because statically they do the same thing. Always read the context, the
+  explanation and the location.
 - **Metadata can lie.** Names, authors and versions in `fabric.mod.json` and
   similar files are written by whoever built the JAR.
 - **Only exact files match the hash database.** Changing a single byte

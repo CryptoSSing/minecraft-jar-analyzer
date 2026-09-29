@@ -14,7 +14,7 @@ ACCENT_HOVER = "#4fcb9d"
 SEVERITY_COLOR = {
     Severity.WARNING: "#f0605a",
     Severity.REVIEW: "#e3b341",
-    Severity.INFO: "#58a6ff",
+    Severity.INFO: TEXT_DIM,  # informational: deliberately quieter than REVIEW/WARNING
 }
 POSITIVE_COLOR = "#3fb950"
 

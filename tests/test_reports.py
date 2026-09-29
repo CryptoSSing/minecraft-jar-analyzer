@@ -75,3 +75,16 @@ def test_cli(make_jar, tmp_path, capsys):
     assert "cli.jar" in captured.out and "Analyzing 1/1" in captured.err
     assert json.loads(out_json.read_text(encoding="utf-8"))["results"][0]["file"]["name"] == "cli.jar"
     assert cli_main([str(tmp_path / "missing.jar")]) == 1
+
+
+def test_reports_explain_severity_and_confidence(results):
+    data = json.loads(to_json(results))
+    warning = data["results"][0]["findings"][0]
+    assert warning["context"] and warning["rationale"]  # why this rating, not just what
+    text = to_text(results)
+    assert "Why this rating:" in text and "Context found:" in text
+    assert "REVIEW  inspect this behavior" in text and "WARNING strong security concern" in text
+    # INFO findings are facts: no confidence level is claimed for them.
+    findings_section = text.split("FINDINGS (", 1)[1]
+    info_block = findings_section.split(" INFO    ", 1)[1].split("\n\n", 1)[0]
+    assert "Confidence: —" in info_block

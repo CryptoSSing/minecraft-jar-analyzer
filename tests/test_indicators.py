@@ -131,22 +131,25 @@ def test_credential_strings_plus_network_is_theft_combo():
 def test_shell_string_alone_is_review():
     ctx = make_ctx([pc("a/S", strings=["cmd.exe /c start"])])
     [f] = by_rule(findings_for(ctx), "strings.sensitive")
-    assert f.severity == Severity.REVIEW
+    assert f.severity == Severity.REVIEW and f.confidence == Confidence.LOW
 
 
 def test_encoded_class_payload_is_warning():
     payload = base64.b64encode(build_class("hidden/Stage2", strings=["x" * 50])).decode()
     ctx = make_ctx([pc("a/Packed", strings=[payload], members=[("java/util/Base64", "getDecoder")])])
     findings = findings_for(ctx)
-    assert by_rule(findings, "strings.encoded_executable")[0].severity == Severity.WARNING
-    assert by_rule(findings, "combo.packed_payload")
+    [f] = by_rule(findings, "strings.encoded_executable")
+    assert f.severity == Severity.WARNING and f.confidence == Confidence.HIGH  # decoder in the same class
+    assert by_rule(findings, "combo.packed_payload")[0].confidence == Confidence.HIGH
 
 
 def test_base64_hidden_url_is_found():
     hidden = base64.b64encode(b"https://pastebin.com/raw/Xy12AbCd?token=QmFzZTY0").decode()
     ctx = make_ctx([pc("a/H", strings=[hidden])])
-    [f] = by_rule(findings_for(ctx), "strings.url")
+    findings = findings_for(ctx)
+    [f] = by_rule(findings, "strings.url")
     assert f.severity == Severity.REVIEW and "Base64-decoded" in f.location
+    assert by_rule(findings, "strings.encoded_url")[0].severity == Severity.REVIEW
 
 
 def test_public_ip_port():
@@ -279,9 +282,12 @@ def test_contents_rules():
                         disguised_files=["a.png (detected: Windows executable (PE))"],
                         unsafe_names=["../x"], duplicate_names=["a"], encrypted_entries=["e"])
     findings = findings_for(make_ctx(contents=c))
-    assert by_rule(findings, "contents.executables")[0].severity == Severity.WARNING
-    assert by_rule(findings, "contents.native_libraries")[0].severity == Severity.REVIEW
-    assert by_rule(findings, "contents.disguised")[0].severity == Severity.WARNING
+    # Stored but nothing in the JAR can run them: REVIEW, not WARNING.
+    assert by_rule(findings, "contents.executables")[0].severity == Severity.REVIEW
+    # Bundled native libraries are a fact; code that LOADS them is rated separately.
+    assert by_rule(findings, "contents.native_libraries")[0].severity == Severity.INFO
+    [disguised] = by_rule(findings, "contents.disguised")
+    assert disguised.severity == Severity.WARNING and disguised.confidence == Confidence.MEDIUM
     for rule in ("contents.unsafe_paths", "contents.duplicates", "contents.encrypted"):
         assert by_rule(findings, rule)
     # Sorted most severe first.

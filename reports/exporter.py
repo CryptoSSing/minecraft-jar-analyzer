@@ -21,7 +21,8 @@ import textwrap
 from datetime import datetime, timezone
 from pathlib import Path
 
-from analyzer.models import AnalysisResult, Finding, HashClassification, Severity
+from analyzer.models import (SEVERITY_MEANING, AnalysisResult, Finding,
+                             HashClassification, Severity)
 from analyzer.sanitize import safe_text
 from analyzer.version import APP_NAME, VERSION
 
@@ -32,6 +33,9 @@ DISCLAIMER = (
 )
 
 SEVERITY_SYMBOL = {Severity.WARNING: "⚠", Severity.REVIEW: "◆", Severity.INFO: "ℹ"}
+# "ℹ INFO = informational   ◆ REVIEW = inspect this behavior   ⚠ WARNING = strong security concern"
+SEVERITY_LEGEND = "    ".join(f"{SEVERITY_SYMBOL[s]} {s.value} = {SEVERITY_MEANING[s]}"
+                               for s in (Severity.INFO, Severity.REVIEW, Severity.WARNING))
 POSITIVE_RULES = {"metadata.detected", "hash.verified"}
 
 HASH_EXPLANATION = {
@@ -43,6 +47,11 @@ HASH_EXPLANATION = {
 
 def severity_symbol(finding: Finding) -> str:
     return "✓" if finding.rule_id in POSITIVE_RULES else SEVERITY_SYMBOL[finding.severity]
+
+
+def confidence_label(finding: Finding) -> str:
+    """INFO findings are facts, not concerns, so they show no confidence level."""
+    return "—" if finding.severity == Severity.INFO else finding.confidence.value
 
 
 def summary_sentence(result: AnalysisResult) -> str:
@@ -217,8 +226,12 @@ def _result_to_text(r: AnalysisResult, index: int, total: int) -> list[str]:
     for f in r.findings:
         L.append(f"  {severity_symbol(f)} {f.severity.value:<8}{safe_text(f.title)}")
         L += _wrap(f"Location: {f.location}", "      ")
-        L.append(f"      Confidence: {f.confidence.value}")
+        L.append(f"      Confidence: {confidence_label(f)}")
         L += _wrap(f"Why it matters: {f.explanation}", "      ")
+        if f.context:
+            L += _wrap(f"Context found: {f.context}", "      ")
+        if f.rationale:
+            L += _wrap(f"Why this rating: {f.rationale}", "      ")
         L.append("")
 
     L.append(f"ERRORS ({len(r.errors)})")
@@ -234,6 +247,9 @@ def to_text(results: list[AnalysisResult]) -> str:
          f"Files analyzed:  {len(results)}",
          "-" * WIDTH]
     L += textwrap.wrap("IMPORTANT: " + DISCLAIMER, WIDTH)
+    L += ["", "Severity levels:"] + [f"  {SEVERITY_SYMBOL[s]} {s.value:<8}{SEVERITY_MEANING[s]}"
+                                     for s in (Severity.INFO, Severity.REVIEW, Severity.WARNING)]
+    L.append("Confidence: how strongly the evidence shows the behavior is security-significant (INFO: —).")
     L += ["=" * WIDTH, ""]
     for i, r in enumerate(results, 1):
         L += _result_to_text(r, i, len(results))

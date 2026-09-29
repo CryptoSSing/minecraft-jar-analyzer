@@ -15,18 +15,33 @@ from enum import StrEnum
 
 
 class Severity(StrEnum):
-    INFO = "INFO"        # Noteworthy, usually normal for mods.
-    REVIEW = "REVIEW"    # Unusual; a human should take a look.
-    WARNING = "WARNING"  # Strongly associated with malicious mods; look closely.
+    """How security-relevant an observation is."""
+    INFO = "INFO"        # Informational: a fact about the JAR, not a security warning.
+    REVIEW = "REVIEW"    # Can be legitimate, but has security relevance: inspect this behaviour.
+    WARNING = "WARNING"  # Strong indicator or combination of indicators: a real security concern.
 
 
 SEVERITY_RANK = {Severity.INFO: 0, Severity.REVIEW: 1, Severity.WARNING: 2}
 
+# Short meaning of each level, shown in the GUI legend and reports.
+SEVERITY_MEANING = {
+    Severity.INFO: "informational",
+    Severity.REVIEW: "inspect this behavior",
+    Severity.WARNING: "strong security concern",
+}
+
 
 class Confidence(StrEnum):
-    LOW = "LOW"
-    MEDIUM = "MEDIUM"
-    HIGH = "HIGH"
+    """How strongly the evidence shows the observation is security-significant.
+
+    This is NOT "how sure are we the API/file is present" (that is always
+    certain for a static match). "Main-Class exists" is a certain fact but has
+    LOW security significance; "downloads a JAR and runs it" is HIGH.
+    INFO findings always use LOW, and the GUI/reports show it as "—".
+    """
+    LOW = "LOW"        # Weak or ambiguous evidence.
+    MEDIUM = "MEDIUM"  # Meaningful evidence, but legitimate explanations are common.
+    HIGH = "HIGH"      # Strong contextual evidence that the behaviour is significant.
 
 
 class HashClassification(StrEnum):
@@ -42,8 +57,10 @@ class Finding:
     severity: Severity
     title: str
     location: str
-    explanation: str
+    explanation: str   # why this kind of behaviour matters
     confidence: Confidence
+    context: str = ""    # what surrounding evidence was (or was not) found
+    rationale: str = ""  # why this severity/confidence was assigned
 
 
 @dataclass

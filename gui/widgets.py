@@ -21,9 +21,11 @@ from PySide6.QtWidgets import (QAbstractItemView, QFrame, QGridLayout,
                                QTableWidget, QTableWidgetItem, QTreeWidget,
                                QTreeWidgetItem, QVBoxLayout, QWidget)
 
-from analyzer.models import AnalysisResult, Finding, HashClassification, Severity
+from analyzer.models import (SEVERITY_MEANING, AnalysisResult, Finding,
+                             HashClassification, Severity)
 from analyzer.sanitize import safe_text
-from reports.exporter import HASH_EXPLANATION, severity_symbol, summary_sentence
+from reports.exporter import (HASH_EXPLANATION, confidence_label,
+                              severity_symbol, summary_sentence)
 
 from . import theme
 
@@ -182,7 +184,7 @@ class OverviewPanel(QScrollArea):
         for f in r.findings:
             item = QListWidgetItem(f"{severity_symbol(f)}  {f.severity.value:<8}  {f.title}")
             item.setForeground(QColor(finding_color(f)))
-            item.setToolTip(f.location[:500])
+            item.setToolTip(f"{f.severity.value} = {SEVERITY_MEANING[f.severity]}\n{f.location[:500]}")
             self.findings.addItem(item)
         if not r.findings:
             self.findings.addItem(QListWidgetItem("No findings."))
@@ -227,9 +229,12 @@ class FindingsPanel(QSplitter):
             sev = QTableWidgetItem(f"{severity_symbol(f)} {f.severity.value}")
             sev.setForeground(QColor(finding_color(f)))
             cells = [sev, QTableWidgetItem(f.title), QTableWidgetItem(f.location),
-                     QTableWidgetItem(f.confidence.value)]
+                     QTableWidgetItem(confidence_label(f))]
+            tips = [f"{f.severity.value} = {SEVERITY_MEANING[f.severity]}", f.title, f.location[:500],
+                    "Not rated: informational" if f.severity == Severity.INFO else
+                    f"{f.confidence.value}: how strongly the evidence shows this is security-significant"]
             for col, cell in enumerate(cells):
-                cell.setToolTip(f.location[:500] if col == 2 else cell.text())
+                cell.setToolTip(tips[col])
                 self.table.setItem(row, col, cell)
         self.details.clear()
         if self._findings:
@@ -247,13 +252,16 @@ class FindingsPanel(QSplitter):
         if not rows:
             return
         f = self._findings[rows[0].row()]
-        self.details.setPlainText(
-            f"{severity_symbol(f)} {f.severity.value} — {f.title}\n\n"
-            f"Confidence: {f.confidence.value}\n"
-            f"Rule: {f.rule_id}\n\n"
-            f"Location:\n{f.location}\n\n"
-            f"Why it matters:\n{f.explanation}"
-        )
+        # Four questions: what was detected, why it matters, what context was
+        # found, and why it got this rating. INFO findings are just facts.
+        text = (f"{severity_symbol(f)} {f.severity.value} ({SEVERITY_MEANING[f.severity]}) — {f.title}\n"
+                f"Confidence: {confidence_label(f)}    Rule: {f.rule_id}\n\n"
+                f"Detected:\n{f.location}\n\n"
+                f"Why it matters:\n{f.explanation}")
+        if f.severity != Severity.INFO:
+            text += (f"\n\nContext found:\n{f.context or '(no further context evaluated)'}"
+                     f"\n\nWhy this rating:\n{f.rationale or '(default rating for this indicator)'}")
+        self.details.setPlainText(text)
 
 
 def make_tree() -> QTreeWidget:
